@@ -19,7 +19,7 @@ func TestRepl(t *testing.T) {
 			got := cleanInput(tc.input)
 			diff := cmp.Diff(tc.expected, got)
 			if diff != "" {
-				t.Fatalf("%v\n", diff)
+				t.Fatalf("Test Name: %s \n Diff: %v\n", name, diff)
 			}
 		})
 	}
