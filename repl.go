@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ayush-anav/bootdevdexproj/internal/pokecache"
 	"bufio"
 	"fmt"
 	"os"
@@ -43,6 +44,7 @@ func cleanInput(text string) []string {
 type config struct {
 	nextLocationsURL *string
 	prevLocationsURL *string
+	cache            pokecache.Cache
 }
 
 type cliCommand struct {

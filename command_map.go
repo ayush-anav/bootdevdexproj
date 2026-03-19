@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -22,22 +23,31 @@ func commandMap(c *config) error {
 		url = *c.nextLocationsURL
 	}
 
-	// 1. make the get request
-	res, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("Could not get resource at endpoint %w", err)
-	}
-	defer res.Body.Close()
-
-	// 2. setup decoder
 	var serverData mapData
-	decoder := json.NewDecoder(res.Body)
 
-	if err := decoder.Decode(&serverData); err != nil {
-		return fmt.Errorf("Could not decode JSON data to GO struct %w", err)
+	if cachedData, ok := c.cache.Get(url); ok {
+		if err := json.Unmarshal(cachedData, &serverData); err != nil {
+			return fmt.Errorf("could not decode cached data: %w", err)
+		}
+	} else {
+		res, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("could not get resource at endpoint: %w", err)
+		}
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("could not read response body: %w", err)
+		}
+
+		c.cache.Add(url, body)
+
+		if err := json.Unmarshal(body, &serverData); err != nil {
+			return fmt.Errorf("could not decode JSON data: %w", err)
+		}
 	}
 
-	// set our config now
 	c.nextLocationsURL = serverData.Next
 	c.prevLocationsURL = serverData.Previous
 
@@ -46,33 +56,45 @@ func commandMap(c *config) error {
 	}
 
 	return nil
-
 }
 
 func commandMapb(c *config) error {
-	if c.prevLocationsURL != nil {
-		res, err := http.Get(*c.prevLocationsURL)
+	if c.prevLocationsURL == nil {
+		fmt.Println("You're on the first page!")
+		return nil
+	}
+
+	url := *c.prevLocationsURL
+	var serverData mapData
+
+	if cachedData, ok := c.cache.Get(url); ok {
+		if err := json.Unmarshal(cachedData, &serverData); err != nil {
+			return fmt.Errorf("could not decode cached data: %w", err)
+		}
+	} else {
+		res, err := http.Get(url)
 		if err != nil {
-			return fmt.Errorf("Could not get resource at endpoint %w", err)
+			return fmt.Errorf("could not get resource at endpoint: %w", err)
 		}
 		defer res.Body.Close()
 
-		var serverData mapData
-		decoder := json.NewDecoder(res.Body)
-
-		if err := decoder.Decode(&serverData); err != nil {
-			return fmt.Errorf("Could not decode JSON data to GO struct %w", err)
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("could not read response body: %w", err)
 		}
 
-		// set our config now
-		c.nextLocationsURL = serverData.Next
-		c.prevLocationsURL = serverData.Previous
+		c.cache.Add(url, body)
 
-		for _, loc := range serverData.Results {
-			fmt.Println(loc.Name)
+		if err := json.Unmarshal(body, &serverData); err != nil {
+			return fmt.Errorf("could not decode JSON data: %w", err)
 		}
-	} else {
-		fmt.Println("You're on the first page!")
+	}
+
+	c.nextLocationsURL = serverData.Next
+	c.prevLocationsURL = serverData.Previous
+
+	for _, loc := range serverData.Results {
+		fmt.Println(loc.Name)
 	}
 
 	return nil
