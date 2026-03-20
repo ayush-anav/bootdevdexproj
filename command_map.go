@@ -17,7 +17,7 @@ type mapData struct {
 	} `json:"results"`
 }
 
-func commandMap(c *config) error {
+func commandMap(c *config, args ...string) error {
 	url := "https://pokeapi.co/api/v2/location-area/"
 	if c.nextLocationsURL != nil {
 		url = *c.nextLocationsURL
@@ -58,7 +58,7 @@ func commandMap(c *config) error {
 	return nil
 }
 
-func commandMapb(c *config) error {
+func commandMapb(c *config, args ...string) error {
 	if c.prevLocationsURL == nil {
 		fmt.Println("You're on the first page!")
 		return nil
